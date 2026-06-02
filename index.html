@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comparador de Cronogramas</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Comparador de Cronogramas v9</div>
+      <h1>La Pampina · Linha Base vs Subcontrata</h1>
+      <div class="sub">Carregue os dois arquivos, clique em <strong>Ler abas</strong> e depois em
+        <strong>Comparar por Bloco</strong> ou selecione atividades específicas.</div>
+    </div>
+    <div class="note" style="max-width:360px">
+      <div>• <strong style="color:var(--cyan)">Linha base</strong>: Cronograma Pampina EXCEL.xlsx</div>
+      <div>• <strong style="color:var(--emerald)">Subcontrata</strong>: Cronograma ISOL REV …xlsx</div>
+      <div>• Colunas detectadas automaticamente — ajuste manual se necessário</div>
+      <div>• <strong>Comparar por Bloco</strong> cruza os 26 PB-N com os 26 CTs</div>
+    </div>
+  </div>
+
+  <!-- CONTROLES SUPERIORES -->
+  <div class="controls-grid">
+
+    <!-- Carga de arquivos -->
+    <div class="panel">
+      <div class="section-title">Carga de arquivos</div>
+      <div class="drop">
+        <div class="drop-label" style="color:var(--cyan)">Linha base (Pampina)</div>
+        <div class="hint">xlsx / xls / xml MS Project</div>
+        <input id="baselineFile" type="file" accept=".xlsx,.xls,.xml" style="margin-top:6px" />
+        <div class="status" id="baselineStatus">Nenhum arquivo carregado.</div>
+      </div>
+      <div class="drop subc">
+        <div class="drop-label" style="color:var(--emerald)">Subcontrata (ISOL)</div>
+        <div class="hint">xlsx / xls / xml MS Project</div>
+        <input id="subFile" type="file" accept=".xlsx,.xls,.xml" style="margin-top:6px" />
+        <div class="status" id="subStatus">Nenhum arquivo carregado.</div>
+      </div>
+      <div class="row2" style="margin-top:10px">
+        <div>
+          <div class="fieldlabel" style="margin-top:0">Aba — linha base</div>
+          <select id="baselineSheet"></select>
+        </div>
+        <div>
+          <div class="fieldlabel" style="margin-top:0">Aba — subcontrata</div>
+          <select id="subSheet"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mapeamento de colunas -->
+    <div class="panel">
+      <div class="section-title">Mapeamento de colunas</div>
+      <div class="fieldlabel" style="margin-top:0;color:var(--cyan)">Linha base</div>
+      <div class="row2">
+        <select id="baselineActivityCol"><option value="">Atividade</option></select>
+        <select id="baselinePvCol"><option value="">Bloco/PV</option></select>
+      </div>
+      <div class="row2" style="margin-top:6px">
+        <select id="baselineStartCol"><option value="">Início</option></select>
+        <select id="baselineFinishCol"><option value="">Fim</option></select>
+      </div>
+      <select id="baselineHierarchyCol" style="margin-top:6px"><option value="">EDT/WBS (opcional)</option></select>
+
+      <div class="fieldlabel" style="color:var(--emerald)">Subcontrata</div>
+      <div class="row2">
+        <select id="subActivityCol"><option value="">Atividade</option></select>
+        <select id="subPvCol"><option value="">Bloco/PV</option></select>
+      </div>
+      <div class="row2" style="margin-top:6px">
+        <select id="subStartCol"><option value="">Início</option></select>
+        <select id="subFinishCol"><option value="">Fim</option></select>
+      </div>
+      <select id="subHierarchyCol" style="margin-top:6px"><option value="">EDT/WBS (opcional)</option></select>
+      <div class="hint" style="margin-top:8px">Detecção automática — corrija se necessário.</div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="panel">
+      <div class="section-title">Filtros &amp; opções</div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:10px;cursor:pointer">
+        <input id="hideSummaryRows" type="checkbox" checked style="width:auto" />
+        Ocultar linhas-resumo / blocos
+      </label>
+      <div class="fieldlabel" style="margin-top:0">Filtrar por bloco — linha base</div>
+      <select id="baselineBlockSel"><option value="">Todos os blocos PB-N</option></select>
+      <div class="fieldlabel">Filtrar por bloco — subcontrata</div>
+      <select id="subBlockSel"><option value="">Todos os CTs</option></select>
+      <div class="fieldlabel">Modo de comparação (seleção)</div>
+      <select id="compareMode">
+        <option value="sequencial">Sequencial — 1º vs 1º, 2º vs 2º</option>
+        <option value="pv">Por bloco/PV</option>
+      </select>
+      <div class="hint" style="margin-top:8px;line-height:1.5">
+        <strong>Sequencial</strong>: emparelha por ordem de data de início.<br />
+        <strong>Por bloco/PV</strong>: emparelha pelo identificador de bloco.
+      </div>
+    </div>
+  </div>
+
+  <!-- SELEÇÃO DE ATIVIDADES -->
+  <div class="activity-grid">
+    <div class="panel">
+      <div class="section-title" style="color:var(--cyan)">Atividades — Linha base</div>
+      <div class="actbox">
+        <div class="row2">
+          <input id="baselineSearch" type="text" placeholder="Buscar…" style="padding:7px 10px" />
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            <button id="baselineSelectAll" type="button" class="secondary" style="font-size:11px;padding:7px 4px">Todas</button>
+            <button id="baselineClear"     type="button" class="secondary" style="font-size:11px;padding:7px 4px">Limpar</button>
+            <button id="suggestBtn"        type="button" class="secondary" style="font-size:11px;padding:7px 4px" disabled>Match</button>
+          </div>
+        </div>
+        <div class="countline" style="margin-top:6px">
+          <span class="pill" id="baselineCount">0 sel.</span>
+          <span class="small" style="font-size:11px">clique para selecionar</span>
+        </div>
+        <div id="baselineChecklist" class="checklist"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title" style="color:var(--emerald)">Atividades — Subcontrata</div>
+      <div class="actbox">
+        <div class="row2">
+          <input id="subSearch" type="text" placeholder="Buscar…" style="padding:7px 10px" />
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            <button id="subSelectAll" type="button" class="secondary" style="font-size:11px;padding:7px 4px">Todas</button>
+            <button id="subClear"     type="button" class="secondary" style="font-size:11px;padding:7px 4px">Limpar</button>
+            <button id="exportBtn"    type="button" class="secondary" style="font-size:11px;padding:7px 4px" disabled>CSV</button>
+          </div>
+        </div>
+        <div class="countline" style="margin-top:6px">
+          <span class="pill" id="subCount">0 sel.</span>
+          <span class="small" style="font-size:11px">pacote de atividades</span>
+        </div>
+        <div id="subChecklist" class="checklist"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTÕES DE AÇÃO -->
+  <div class="actions">
+    <button id="loadSheetsBtn"    class="secondary">📂 Ler abas selecionadas</button>
+    <button id="compareBtn"       disabled>▶ Comparar seleção</button>
+    <button id="compareBlockBtn"  class="accent" disabled>⊞ Comparar por Bloco (CT vs PB-N)</button>
+    <button id="compareSuggestBtn" class="secondary" disabled>💡 Sugerir correspondências</button>
+  </div>
+
+  <!-- ═══════════════════  RESULTADOS  ═══════════════════ -->
+
+  <!-- MINI CARDS -->
+  <div class="cards-grid">
+    <div class="mini">
+      <div class="t">1º início — linha base</div>
+      <div class="v" id="cardBaseStart">—</div>
+      <div class="s" id="cardBaseStartSub">—</div>
+    </div>
+    <div class="mini">
+      <div class="t">1º início — subcontrata</div>
+      <div class="v" id="cardSubStart">—</div>
+      <div class="s" id="cardSubStartSub">—</div>
+    </div>
+    <div class="mini">
+      <div class="t">Último fim — linha base</div>
+      <div class="v" id="cardBaseEnd">—</div>
+      <div class="s" id="cardBaseEndSub">—</div>
+    </div>
+    <div class="mini">
+      <div class="t">Último fim — subcontrata</div>
+      <div class="v" id="cardSubEnd">—</div>
+      <div class="s" id="cardSubEndSub">—</div>
+    </div>
+  </div>
+
+  <!-- TABELA PRINCIPAL -->
+  <div class="tablecard">
+    <div class="tablehead">
+      <div>
+        <div style="font-size:18px;font-weight:700">Comparação</div>
+        <div class="small" id="comparisonSubtitle" style="margin-top:4px">
+          Carregue os arquivos e clique em um dos botões de comparação.
+        </div>
+      </div>
+      <div class="tags" id="tagBox">
+        <div class="tag">LB: —</div>
+        <div class="tag">SUB: —</div>
+      </div>
+    </div>
+
+    <div style="padding:8px 16px 0">
+      <div class="tabs">
+        <div class="tab active" id="tabActivities" onclick="switchTab('activities')">Atividades</div>
+        <div class="tab"        id="tabBlocks"     onclick="switchTab('blocks')">Blocos CT vs PB-N</div>
+        <div class="tab"        id="tabGantt"      onclick="switchTab('gantt')">Gantt por bloco</div>
+        <div class="tab"        id="tabSuggest"    onclick="switchTab('suggest')">Sugestões de match</div>
+      </div>
+    </div>
+
+    <!-- TAB Atividades -->
+    <div id="viewActivities">
+      <div class="scrollx">
+        <table>
+          <thead><tr>
+            <th>#</th>
+            <th>Bloco LB</th><th>Atividade — Linha Base</th><th>Início LB</th><th>Fim LB</th>
+            <th>Bloco SUB</th><th>Atividade — Subcontrata</th><th>Início SUB</th><th>Fim SUB</th>
+            <th>Δ início</th><th>Δ fim</th><th>Obs.</th>
+          </tr></thead>
+          <tbody id="comparisonBody">
+            <tr><td colspan="12" class="small" style="padding:20px;text-align:center">Sem comparação ainda.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB Blocos -->
+    <div id="viewBlocks" style="display:none">
+      <div class="scrollx">
+        <table>
+          <thead><tr>
+            <th>#</th>
+            <th>Bloco LB (PB-N)</th><th>Início LB</th><th>Fim LB</th><th>Dur. LB</th>
+            <th>Bloco SUB (CT)</th><th>Início SUB</th><th>Fim SUB</th><th>Dur. SUB</th>
+            <th>Δ início</th><th>Δ fim</th><th>Δ duração</th>
+          </tr></thead>
+          <tbody id="blockComparisonBody">
+            <tr><td colspan="12" class="small" style="padding:20px;text-align:center">Clique em "Comparar por Bloco".</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB Gantt -->
+    <div id="viewGantt" style="display:none">
+      <div class="gantt-wrap" id="ganttContent">
+        <div class="small" style="padding:10px">Faça uma comparação por bloco primeiro.</div>
+      </div>
+    </div>
+
+    <!-- TAB Sugestões -->
+    <div id="viewSuggest" style="display:none;padding:16px">
+      <div id="suggestionBox" class="small">Carregue os arquivos e clique em "Sugerir correspondências".</div>
+    </div>
+  </div>
+
+  <!-- LINHA DO TEMPO + PARECER -->
+  <div class="bottom-grid">
+    <div class="panel">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px">Linha do tempo resumida</div>
+      <div class="linediv">
+        <div class="top"><span>Linha base</span><span id="baseTimelineLabel">—</span></div>
+        <div class="timelinebar">
+          <div id="baseTimelineFill" class="timeline-fill" style="width:0%;background:rgba(34,211,238,.75)"></div>
+        </div>
+      </div>
+      <div class="linediv">
+        <div class="top"><span>Subcontrata</span><span id="subTimelineLabel">—</span></div>
+        <div class="timelinebar">
+          <div id="subTimelineFill" class="timeline-fill" style="width:0%;background:rgba(52,211,153,.78)"></div>
+        </div>
+      </div>
+      <div id="overlapInfo" style="margin-top:10px"></div>
+    </div>
+    <div class="panel report">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px">Parecer automático</div>
+      <div id="reportBox" class="small">Sem leitura ainda.</div>
+    </div>
+  </div>
+
+  <!-- FRENTES PARALELAS + INFO BLOCOS -->
+  <div class="bottom-grid2">
+    <div class="panel">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px">Frentes em paralelo</div>
+      <div id="parallelBox" class="small">Faça uma comparação para ver o pico de frentes.</div>
+    </div>
+    <div class="panel">
+      <div style="font-size:16px;font-weight:700;margin-bottom:12px">Detecção de blocos</div>
+      <div id="blockInfoBox" class="small">Carregue os arquivos e leia as abas.</div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script src="app.js"></script>
+</body>
+</html>
